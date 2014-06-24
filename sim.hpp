@@ -25,17 +25,39 @@ class Sim{
         MTRand* rand; // MersenneTwister pseudorandom number generator
         int seed; // Seed for the random number generator
         int L; // Size of the lattice
-        double P; // Probability of 
+        int Nspins; // Derived from L above
+        int Nbonds; // Derived from L above
+        double P; // Probability of disorder bond, 0 = pure ferromagnet
         double beta; // Inverse temperature
-        int sweeps; // Number of MC sweeps per bin
-        int bins; // Number of total bins
         int regionA; // Number of rows in regionA (for simplicity, we will only add one entire row at a time)
     public:
         Sim(); //Default constructor
+        int sweeps; // Number of MC sweeps per bin
+        int bins; // Number of total bins
+        void singleUpdate(); // Single spin update attempt
+        // Some function to find neighbours, to be thoroughly abused
+        // Cluster update
+
 };
 
 Sim::Sim(){
     loadParams();
+    rand->seed(seed);
+    Nspins = L*L;
+    Nbonds = 2*Nspins;
+    spins.resize(Nspins);
+    for(int i=0;i<Nspins;i++){
+        spins(i) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+    }
+    Jmat.resize(Nbonds);
+    for(int i=0;i<Nbonds;i++){
+        if(rand->randExc() < P){
+            Jmat(i) = 1.; // If P is small, this usually won't happen
+        }
+        else{
+            Jmat(i) = -1.; // Usually we are ferromagnetic
+        }
+    }
 }
 
 void Sim::loadParams(){
@@ -58,6 +80,9 @@ void Sim::loadParams(){
         std::cout << "bins = " << bins << std::endl;
         std::cout << "regionA = " << regionA << std::endl;
     }
+}
+
+void Sim::singleUpdate(){
 }
 
 #endif //SIMHPP
