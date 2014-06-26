@@ -1,5 +1,5 @@
 CC=g++ -std=c++0x
-CCOPT=-O3
+CCOPT=-O3 -DNDEBUG
 CCFLAGS=-g -DDEBUG
 
 all: Ising.out

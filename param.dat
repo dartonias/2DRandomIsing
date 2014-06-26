@@ -1,7 +1,7 @@
 Lattice_size_L    12
 Disorder_prob_P   0.0
-Beta              1.0
+Beta              2.0
 Random_seed       12345
-Sweeps_per_bin    100
+Sweeps_per_bin    1000
 Num_bins          100
 Strips_in_regionA 0
