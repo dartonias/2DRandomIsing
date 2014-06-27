@@ -11,6 +11,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <math.h>
 #include "MersenneTwister.h"
 #include "Eigen/Core"
@@ -46,7 +47,7 @@ class Sim{
         int adjS(int x, int y); // Find the y'th neighbor to spin x
         int adjJ(int x, int y); // Find the y'th bond of spin x (it connect's with the y'th spin above)
         // Cluster update
-        void addNeighbours(int z);
+        void addNeighbours(int z, int& s);
         void clusterUpdate(); // Swendsen-Wang update
         int getNspins();
         int getNbonds();
@@ -85,6 +86,9 @@ Sim::Sim(){
         else{
             Jmat(i) = -1; // Usually we are ferromagnetic
         }
+    }
+    if(DEBUG){
+        std::cout << Jmat.transpose() << std::endl;
     }
 }
 
@@ -179,13 +183,14 @@ void Sim::singleUpdate(){
     }
 }
 
-void Sim::addNeighbours(int z){ // Recursive part
+void Sim::addNeighbours(int z,int& s){ // Recursive part
+    s = s+1;
     cluster(z) = -1;
     for(int i=0;i<4;i++){
         if(cluster(adjS(z,i))==1){ // Only try if it's not in the cluster
-            if((spins(z) * spins(adjS(z,i)) * Jmat(adjJ(z,i)))==1){ // If the spins match ...
+            if((spins(z) * spins(adjS(z,i)) * Jmat(adjJ(z,i)))==-1){ // If the spins match ...
                 if(rand->randExc() < Padd){ // Probability to add
-                    addNeighbours(adjS(z,i));
+                    addNeighbours(adjS(z,i),s);
                 }
             }
         }
@@ -196,20 +201,32 @@ void Sim::clusterUpdate(){
     // Choose a random spin
     int z = rand->randInt(Nspins-1);
     cluster.fill(1); // No spins are in the cluster
-    cluster(z) = -1; // Add the first spin to the cluster
-    // Try to add the neighbours
-    for(int i=0;i<4;i++){
-        if(cluster(adjS(z,i))==1){ // Only try if it's not in the cluster
-            if((spins(z) * spins(adjS(z,i)) * Jmat(adjJ(z,i)))==1){ // If the spins match ...
-                if(rand->randExc() < Padd){ // Probability to add
-                    addNeighbours(adjS(z,i)); // Recursively add spins to the cluster
-                }
-            }
+    if(DEBUG){
+        int s = 0;
+        addNeighbours(z,s);
+        std::cout << s << std::endl;
+        for(int i=0;i<Nspins;i++){
+            if((i%L)==0) std::cout << std::endl;
+            std::cout << std::setw(2);
+            std::cout << cluster(i) << " ";
         }
+        std::cout << std::endl;
+    }
+    else{
+        int s = 0;
+        addNeighbours(z,s);
     }
     // Now that it's finished, flip all spins in the cluster
     // All elements in "cluster" are -1, and will flip spins in "spins"
-    spins = spins.array() * cluster.array();
+    if(DEBUG){
+        updateE();
+        double tE1 = Energy;
+        spins = spins.array() * cluster.array();
+        updateE();
+        double tE2 = Energy;
+        std::cout << "dE = " << (tE2 - tE1) << std::endl << std::endl;
+    }
+    else spins = spins.array() * cluster.array();
 }
 
 void Sim::updateE(){

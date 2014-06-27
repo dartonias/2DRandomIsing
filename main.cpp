@@ -10,7 +10,7 @@ int main(int argc, char** argv){
                 mySim->singleUpdate();
             }
             mySim->clusterUpdate();
-            mySim->updateE();
+            //mySim->updateE();
             mySim->updateBinder();
         }
     }

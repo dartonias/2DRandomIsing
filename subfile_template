@@ -1,0 +1,14 @@
+#$ -cwd                                # write SGE-Logs to directory where job is started
+#$ -o log
+#$ -e err
+#$ -l h_vmem=1000M,s_rt=2:30:0         # specify memory and time requirements
+#$ -S /bin/sh                          # specify the shell
+#$ -q TH-WS-E5,TH-CL-DOLLY,TH-CL-E5,TH-CL-E5S,TH-CL-I7,TH-CL-I7S                         # choose from Q-List
+#$ -M Stephen.Inglis@physik.uni-muenchen.de      # provide your mail address, should be @physik.
+#$ -m a                              # Mail Notifications: (b)egin, (e)nd, (a)bort
+#$ -N __jobname
+
+timeout 140m __allpath
+cd ../..
+tar -cf __tarname __tardir/obs* __tardir/param.dat
+rm -rf __tardir
