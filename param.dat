@@ -1,6 +1,8 @@
 Lattice_size_L    16
 Disorder_prob_P   0.0
-Beta              0.35
+Beta_min          0.4
+Beta_max          0.6
+Num_temps         21
 Random_seed       12345
 Sweeps_per_bin    1000
 Num_bins          100
