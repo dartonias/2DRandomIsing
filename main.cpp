@@ -4,13 +4,12 @@
 
 int main(int argc, char** argv){
     Eigen::Matrix<int, Eigen::Dynamic, 1> temp_spins;
-    double beta_min;
-    double beta_max;
-    int num_temps;
-    runParams(beta_min,beta_max,num_temps);
+    vector<double> temps;
+    getTemps(temps);
+    int num_temps = temps.size();
     vector<Sim> simVec;
     simVec.resize(0);
-    simVec.push_back(Sim());
+    simVec.push_back(Sim(temps[0]));
     if(fexists("LOADJ")){
         simVec[0].loadJ();
     }
@@ -18,8 +17,8 @@ int main(int argc, char** argv){
         simVec[0].saveJ();
         return 0;
     }
-    for(int i=0;i<(num_temps-1);i++){
-        simVec.push_back(Sim(simVec[0].getRand(),simVec[0].getJ(),(beta_max-beta_min)/(num_temps-1)*(i+1)+beta_min));
+    for(int i=1;i<num_temps;i++){
+        simVec.push_back(Sim(simVec[0].getRand(),simVec[0].getJ(),temps[i]));
     }
     for(int i_bins=0;i_bins<simVec[0].bins;i_bins++){
         for(int i_sweeps=0;i_sweeps<simVec[0].sweeps;i_sweeps++){

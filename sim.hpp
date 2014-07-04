@@ -39,7 +39,7 @@ class Sim{
         observable<double>* obs_mag2; // For binder cumulant
         observable<double>* obs_mag4;
     public:
-        Sim(); //Default constructor
+        Sim(double _beta=0.1); //Default constructor
         Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _beta); //Parallel temperting constructor
         Eigen::Matrix<int, Eigen::Dynamic, 1> getSpins();
         void setSpins(Eigen::Matrix<int, Eigen::Dynamic, 1> _spins);
@@ -70,8 +70,9 @@ int Sim::getNbonds(){
     return Nbonds;
 }
 
-Sim::Sim(){
+Sim::Sim(double _beta){
     loadParams();
+    beta = _beta;
     obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
     obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
     Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
@@ -124,9 +125,6 @@ void Sim::loadParams(){
     std::fstream inFile(filename.c_str());
     inFile >> g >> L;
     inFile >> g >> P;
-    inFile >> g >> beta; //beta_min
-    inFile >> g >> g; //beta_max
-    inFile >> g >> g; //num_temps
     inFile >> g >> seed;
     inFile >> g >> sweeps;
     inFile >> g >> bins;
@@ -323,15 +321,14 @@ bool fexists(const char* filename){
     return ifile;
 }
 
-void runParams(double& beta_min, double& beta_max, int& num_temps){
-    std::string filename = "param.dat";
-    std::string g; // Garbage string for going through param file
+void getTemps(vector<double>& temps){
+    std::string filename = "temps.dat";
     std::fstream inFile(filename.c_str());
-    inFile >> g >> g;
-    inFile >> g >> g;
-    inFile >> g >> beta_min; //beta_min
-    inFile >> g >> beta_max; //beta_max
-    inFile >> g >> num_temps; //num_temps
+    temps.resize(0);
+    double cur_temp;
+    while (inFile >> cur_temp){
+        temps.push_back(cur_temp);
+    }
 }
 
 #endif //SIMHPP
