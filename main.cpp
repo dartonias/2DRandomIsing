@@ -4,6 +4,7 @@
 
 int main(int argc, char** argv){
     Eigen::Matrix<int, Eigen::Dynamic, 1> temp_spins;
+    double temp_E;
     vector<double> temps;
     getTemps(temps);
     int num_temps = temps.size();
@@ -37,8 +38,11 @@ int main(int argc, char** argv){
                 double dB = simVec[flipme+1].getB() - simVec[flipme].getB();
                 if(simVec[0].getRand()->randExc() < exp(dE*dB)){
                     temp_spins = simVec[flipme].getSpins();
+                    temp_E = simVec[flipme].getE();
                     simVec[flipme].setSpins(simVec[flipme+1].getSpins());
+                    simVec[flipme].setE(simVec[flipme+1].getE());
                     simVec[flipme+1].setSpins(temp_spins);
+                    simVec[flipme+1].setE(temp_E);
                 }
             }
         }

@@ -59,7 +59,9 @@ class Sim{
         Eigen::Matrix<int, Eigen::Dynamic, 1> getJ();
         MTRand* getRand();
         double getE();
+        void setE(double newE);
         double getB();
+        void printSpins();
 };
 
 int Sim::getNspins(){
@@ -302,6 +304,10 @@ double Sim::getE(){
     return Energy;
 }
 
+void Sim::setE(double newE){
+    Energy = newE;
+}
+
 double Sim::getB(){
     return beta;
 }
@@ -312,6 +318,10 @@ Eigen::Matrix<int, Eigen::Dynamic, 1> Sim::getSpins(){
 
 void Sim::setSpins(Eigen::Matrix<int, Eigen::Dynamic, 1> _spins){
     spins = _spins;
+}
+
+void Sim::printSpins(){
+    std::cout << spins.transpose() << std::endl;
 }
 
 // Some helper functions, for flow control
