@@ -25,6 +25,8 @@ class Sim{
         Eigen::Matrix<int, Eigen::Dynamic, 2> cluster; // For the cluster update
         Eigen::Matrix<int, Eigen::Dynamic, 1> Jmat; // All elements +- 1
         Eigen::Matrix<int, Eigen::Dynamic, 2> spins; // All spins +- 1
+        Eigen::Matrix<int, Eigen::Dynamic, 2> up_row; // Row of spins above region A
+        Eigen::Matrix<int, Eigen::Dynamic, 2> dn_row; // Row of spins below region A
         void loadParams(); // Loads parameters from param.dat
         MTRand* rand; // MersenneTwister pseudorandom number generator
         int seed; // Seed for the random number generator
@@ -86,6 +88,8 @@ Sim::Sim(double _beta){
     Nbonds = 2*Nspins;
     spins.resize(Nspins,2);
     cluster.resize(Nspins,2);
+    up_row.resize(L,2);
+    dn_row.resize(L,2);
     for(int i=0;i<Nspins;i++){
         spins(i,0) = rand->randInt(1)*2 - 1; // +- 1 random initial state
         if (i < regionA*L){
@@ -318,6 +322,13 @@ void Sim::updateBinder(){
 
 void Sim::updateRatio(){
     // Assuming that we have regionA rows currently in "A", measure Z[A+1]/Z[A], where A+1 means adding a row to "A".
+    if (regionA == 0){
+        dn_row = spins.middleRows(L*L,L); // Row below is the top row if we're adding the bottom row
+    }
+    else{
+        dn_row = spins.middleRows((regionA-1)*L,L);
+    }
+    up_row = spins.middleRows((regionA+1)*L,L);
 }
 
 void Sim::saveJ(){
