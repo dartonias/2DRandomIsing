@@ -3,7 +3,7 @@
 #include <cmath>
 
 int main(int argc, char** argv){
-    Eigen::Matrix<int, Eigen::Dynamic, 1> temp_spins;
+    Eigen::Matrix<int, Eigen::Dynamic, 2> temp_spins;
     double temp_E;
     vector<double> temps;
     getTemps(temps);

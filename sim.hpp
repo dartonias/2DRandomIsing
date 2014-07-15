@@ -22,9 +22,9 @@ class Sim{
     private:
         static const int binSize = 1000; // Averages per line (larger --> smaller files)
         static const int bufferSize = 10; // Lines held per write (larger --> less often writes to file)
-        Eigen::Matrix<int, Eigen::Dynamic, 1> cluster; // For the cluster update
+        Eigen::Matrix<int, Eigen::Dynamic, 2> cluster; // For the cluster update
         Eigen::Matrix<int, Eigen::Dynamic, 1> Jmat; // All elements +- 1
-        Eigen::Matrix<int, Eigen::Dynamic, 1> spins; // All spins +- 1
+        Eigen::Matrix<int, Eigen::Dynamic, 2> spins; // All spins +- 1
         void loadParams(); // Loads parameters from param.dat
         MTRand* rand; // MersenneTwister pseudorandom number generator
         int seed; // Seed for the random number generator
@@ -38,22 +38,24 @@ class Sim{
         double Energy; // Total energy
         observable<double>* obs_mag2; // For binder cumulant
         observable<double>* obs_mag4;
+        observable<double>* obs_ratio;
     public:
         Sim(double _beta=0.1); //Default constructor
         Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _beta); //Parallel temperting constructor
-        Eigen::Matrix<int, Eigen::Dynamic, 1> getSpins();
-        void setSpins(Eigen::Matrix<int, Eigen::Dynamic, 1> _spins);
+        Eigen::Matrix<int, Eigen::Dynamic, 2> getSpins();
+        void setSpins(Eigen::Matrix<int, Eigen::Dynamic, 2> _spins);
         int sweeps; // Number of MC sweeps per bin
         int bins; // Number of total bins
         void singleUpdate(); // Single spin update attempt
         int adjS(int x, int y); // Find the y'th neighbor to spin x
         int adjJ(int x, int y); // Find the y'th bond of spin x (it connect's with the y'th spin above)
-        void addNeighbours(int z, int& s);
+        void addNeighbours(int z, int zz, int& s);
         void clusterUpdate(); // Swendsen-Wang update
         int getNspins();
         int getNbonds();
         void updateE(); // Updates the Energy variable above
         void updateBinder(); // Updates magnetization for Binder Ratio
+        void updateRatio(); // Updates ratio measurement from the current regionA choice to the next one (adding a row)
         void saveJ();
         void loadJ();
         Eigen::Matrix<int, Eigen::Dynamic, 1> getJ();
@@ -77,14 +79,21 @@ Sim::Sim(double _beta){
     beta = _beta;
     obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
     obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
+    obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
     Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = new MTRand(seed);
     Nspins = L*L;
     Nbonds = 2*Nspins;
-    spins.resize(Nspins);
-    cluster.resize(Nspins);
+    spins.resize(Nspins,2);
+    cluster.resize(Nspins,2);
     for(int i=0;i<Nspins;i++){
-        spins(i) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        spins(i,0) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        if (i < regionA*L){
+            spins(i,1) = spins(i,0); // spins must match in region A
+        }
+        else{
+            spins(i,1) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        }
     }
     Jmat.resize(Nbonds);
     for(int i=0;i<Nbonds;i++){
@@ -105,14 +114,21 @@ Sim::Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _bet
     beta = _beta;
     obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
     obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
+    obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
     Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = _rand;
     Nspins = L*L;
     Nbonds = 2*Nspins;
-    spins.resize(Nspins);
-    cluster.resize(Nspins);
+    spins.resize(Nspins,2);
+    cluster.resize(Nspins,2);
     for(int i=0;i<Nspins;i++){
-        spins(i) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        spins(i,0) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        if (i < regionA*L){
+            spins(i,1) = spins(i,0); // spins must match in region A
+        }
+        else{
+            spins(i,1) = rand->randInt(1)*2 - 1; // +- 1 random initial state
+        }
     }
     Jmat.resize(Nbonds);
     Jmat = _Jmat;
@@ -200,25 +216,49 @@ void Sim::singleUpdate(){
     // Choose a random spin
     int z = rand->randInt(Nspins-1);
     double field = 0;
-    for(int i=0;i<4;i++){ // Loop over neighbours
-        field += spins(z) * spins(adjS(z,i)) * Jmat(adjJ(z,i));
+    if (z < regionA*L){ // We are in region A
+        for(int i=0;i<4;i++){ // Loop over neighbours
+            field += spins(z,0) * spins(adjS(z,i),0) * Jmat(adjJ(z,i),0);
+            field += spins(z,1) * spins(adjS(z,i),1) * Jmat(adjJ(z,i),1);
+        }
+        if (field>=0){
+            spins(z,0) = spins(z,0) * -1;
+            spins(z,1) = spins(z,1) * -1;
+        }
+        else{ // Probability to flip
+            if(rand->randExc() < exp(2*field*beta)){ // field is negative, so the right hand term is less than 1
+                spins(z,0) = spins(z,0) * -1;
+                spins(z,1) = spins(z,1) * -1;
+            }
+        }
     }
-    if (field>=0) spins(z) = spins(z) * -1;
-    else{ // Probability to flip
-        if(rand->randExc() < exp(2*field*beta)){ // field is negative, so the right hand term is less than 1
-            spins(z) = spins(z) * -1;
+    else{ // We are not in region A
+        int zz = rand->randInt(1); // Choose a layer
+        for(int i=0;i<4;i++){ // Loop over neighbours
+            field += spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i),zz);
+        }
+        if (field>=0){
+            spins(z,zz) = spins(z,zz) * -1;
+        }
+        else{ // Probability to flip
+            if(rand->randExc() < exp(2*field*beta)){ // field is negative, so the right hand term is less than 1
+                spins(z,zz) = spins(z,zz) * -1;
+            }
         }
     }
 }
 
-void Sim::addNeighbours(int z,int& s){ // Recursive part
+void Sim::addNeighbours(int z,int zz,int& s){ // Recursive part
     s = s+1;
-    cluster(z) = -1;
+    cluster(z,zz) = -1;
+    if (z < regionA*L){
+        if(cluster(z,(zz+1)%2)==1) addNeighbours(z,(zz+1)%2,s);
+    }
     for(int i=0;i<4;i++){
-        if(cluster(adjS(z,i))==1){ // Only try if it's not in the cluster
-            if((spins(z) * spins(adjS(z,i)) * Jmat(adjJ(z,i)))==-1){ // If the spins match ...
+        if(cluster(adjS(z,i),zz)==1){ // Only try if it's not in the cluster
+            if((spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i)))==-1){ // If the spins match ...
                 if(rand->randExc() < Padd){ // Probability to add
-                    addNeighbours(adjS(z,i),s);
+                    addNeighbours(adjS(z,i),zz,s);
                 }
             }
         }
@@ -228,10 +268,11 @@ void Sim::addNeighbours(int z,int& s){ // Recursive part
 void Sim::clusterUpdate(){
     // Choose a random spin
     int z = rand->randInt(Nspins-1);
+    int zz = rand->randInt(1);
     cluster.fill(1); // No spins are in the cluster
     if(DEBUG){
         int s = 0;
-        addNeighbours(z,s);
+        addNeighbours(z,zz,s);
         std::cout << s << std::endl;
         for(int i=0;i<Nspins;i++){
             if((i%L)==0) std::cout << std::endl;
@@ -242,7 +283,7 @@ void Sim::clusterUpdate(){
     }
     else{
         int s = 0;
-        addNeighbours(z,s);
+        addNeighbours(z,zz,s);
     }
     // Now that it's finished, flip all spins in the cluster
     // All elements in "cluster" are -1, and will flip spins in "spins"
@@ -263,15 +304,20 @@ void Sim::updateE(){
     for(int i=0;i<Nspins;i++){
         // Loop over unique bonds, 2 per spin
         for(int b=0;b<2;b++){
-            Energy += spins(i) * spins(adjS(i,b)) * Jmat(adjJ(i,b));
+            Energy += spins(i,0) * spins(adjS(i,b),0) * Jmat(adjJ(i,b));
+            Energy += spins(i,1) * spins(adjS(i,b),1) * Jmat(adjJ(i,b));
         }
     }
 }
 
 void Sim::updateBinder(){
-    double mag = spins.sum()*1.0/Nspins;
+    double mag = spins.sum()*1.0/(2*Nspins);
     obs_mag2->pe(pow(mag,2));
     obs_mag4->pe(pow(mag,4));
+}
+
+void Sim::updateRatio(){
+    // Assuming that we have regionA rows currently in "A", measure Z[A+1]/Z[A], where A+1 means adding a row to "A".
 }
 
 void Sim::saveJ(){
@@ -312,11 +358,11 @@ double Sim::getB(){
     return beta;
 }
 
-Eigen::Matrix<int, Eigen::Dynamic, 1> Sim::getSpins(){
+Eigen::Matrix<int, Eigen::Dynamic, 2> Sim::getSpins(){
     return spins;
 }
 
-void Sim::setSpins(Eigen::Matrix<int, Eigen::Dynamic, 1> _spins){
+void Sim::setSpins(Eigen::Matrix<int, Eigen::Dynamic, 2> _spins){
     spins = _spins;
 }
 
