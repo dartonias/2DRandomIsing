@@ -25,8 +25,10 @@ class Sim{
         Eigen::Matrix<int, Eigen::Dynamic, 2> cluster; // For the cluster update
         Eigen::Matrix<int, Eigen::Dynamic, 1> Jmat; // All elements +- 1
         Eigen::Matrix<int, Eigen::Dynamic, 2> spins; // All spins +- 1
-        Eigen::Matrix<int, Eigen::Dynamic, 2> up_row; // Row of spins above region A
-        Eigen::Matrix<int, Eigen::Dynamic, 2> dn_row; // Row of spins below region A
+        Eigen::Matrix<double, 2, 2> trans_mat; // For the transfer matrix calculation
+        Eigen::Matrix<double, 2, 2> trans_prod_top; // For the transfer matrix calculation
+        Eigen::Matrix<double, 2, 2> trans_prod_bot; // For the transfer matrix calculation
+        Eigen::Matrix<double, 2, 2> trans_prod_con; // For the transfer matrix calculation
         void loadParams(); // Loads parameters from param.dat
         MTRand* rand; // MersenneTwister pseudorandom number generator
         int seed; // Seed for the random number generator
@@ -88,8 +90,6 @@ Sim::Sim(double _beta){
     Nbonds = 2*Nspins;
     spins.resize(Nspins,2);
     cluster.resize(Nspins,2);
-    up_row.resize(L,2);
-    dn_row.resize(L,2);
     for(int i=0;i<Nspins;i++){
         spins(i,0) = rand->randInt(1)*2 - 1; // +- 1 random initial state
         if (i < regionA*L){
@@ -222,8 +222,8 @@ void Sim::singleUpdate(){
     double field = 0;
     if (z < regionA*L){ // We are in region A
         for(int i=0;i<4;i++){ // Loop over neighbours
-            field += spins(z,0) * spins(adjS(z,i),0) * Jmat(adjJ(z,i),0);
-            field += spins(z,1) * spins(adjS(z,i),1) * Jmat(adjJ(z,i),1);
+            field += spins(z,0) * spins(adjS(z,i),0) * Jmat(adjJ(z,i));
+            field += spins(z,1) * spins(adjS(z,i),1) * Jmat(adjJ(z,i));
         }
         if (field>=0){
             spins(z,0) = spins(z,0) * -1;
@@ -239,7 +239,7 @@ void Sim::singleUpdate(){
     else{ // We are not in region A
         int zz = rand->randInt(1); // Choose a layer
         for(int i=0;i<4;i++){ // Loop over neighbours
-            field += spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i),zz);
+            field += spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i));
         }
         if (field>=0){
             spins(z,zz) = spins(z,zz) * -1;
@@ -321,14 +321,53 @@ void Sim::updateBinder(){
 }
 
 void Sim::updateRatio(){
-    // Assuming that we have regionA rows currently in "A", measure Z[A+1]/Z[A], where A+1 means adding a row to "A".
-    if (regionA == 0){
-        dn_row = spins.middleRows(L*L,L); // Row below is the top row if we're adding the bottom row
+    double field_1_top = 0; // 1 and 2 are the first and second spin of the transfer matrix
+    double field_2_top = 0; // While top and bot represent the two replicas
+    double field_1_bot = 0;
+    double field_2_bot = 0;
+    trans_prod_top.setIdentity(2,2);
+    trans_prod_bot.setIdentity(2,2);
+    trans_prod_con.setIdentity(2,2);
+    int s1,s2;
+    // Spins we are integrating over are spin regionA*L to regionA*L + (L-1)
+    for(int i=0;i<L;i++){
+        s1 = regionA*L+i;
+        if (i==(L-1)){
+            s2 = regionA*L;
+        }
+        else{
+            s2 = s1+1;
+        }
+        if(i==0){
+            field_1_top = Jmat(adjJ(s1,1)) * spins(adjS(s1,1),0) + Jmat(adjJ(s1,3)) * spins(adjS(s1,3),0);
+            field_1_bot = Jmat(adjJ(s1,1)) * spins(adjS(s1,1),1) + Jmat(adjJ(s1,3)) * spins(adjS(s1,3),1);
+        }
+        else{
+            field_1_top = field_2_top;
+            field_1_bot = field_2_bot;
+        }
+        field_2_top = Jmat(adjJ(s2,1)) * spins(adjS(s2,1),0) + Jmat(adjJ(s2,3)) * spins(adjS(s2,3),0);
+        field_2_bot = Jmat(adjJ(s2,1)) * spins(adjS(s2,1),1) + Jmat(adjJ(s2,3)) * spins(adjS(s2,3),1);
+
+        trans_mat(0,0) = exp(-1.*beta*(Jmat(adjJ(s1,0)) + field_1_top/2. + field_2_top/2.));
+        trans_mat(0,1) = exp(-1.*beta*(-1.*Jmat(adjJ(s1,0)) + field_1_top/2. - field_2_top/2.));
+        trans_mat(1,0) = exp(-1.*beta*(-1.*Jmat(adjJ(s1,0)) - field_1_top/2. + field_2_top/2.));
+        trans_mat(1,1) = exp(-1.*beta*(Jmat(adjJ(s1,0)) - field_1_top/2. - field_2_top/2.));
+        trans_prod_top *= trans_mat;
+
+        trans_mat(0,0) = exp(-1.*beta*(Jmat(adjJ(s1,0)) + field_1_bot/2. + field_2_bot/2.));
+        trans_mat(0,1) = exp(-1.*beta*(-1.*Jmat(adjJ(s1,0)) + field_1_bot/2. - field_2_bot/2.));
+        trans_mat(1,0) = exp(-1.*beta*(-1.*Jmat(adjJ(s1,0)) - field_1_bot/2. + field_2_bot/2.));
+        trans_mat(1,1) = exp(-1.*beta*(Jmat(adjJ(s1,0)) - field_1_bot/2. - field_2_bot/2.));
+        trans_prod_bot *= trans_mat;
+
+        trans_mat(0,0) = exp(-1.*beta*(2.*Jmat(adjJ(s1,0)) + field_1_top/2. + field_1_bot/2. + field_2_top/2. + field_2_bot/2.));
+        trans_mat(0,1) = exp(-1.*beta*(-2.*Jmat(adjJ(s1,0)) + field_1_top/2. + field_1_bot/2. - field_2_top/2. - field_2_bot/2.));
+        trans_mat(1,0) = exp(-1.*beta*(-2.*Jmat(adjJ(s1,0)) - field_1_top/2. - field_1_bot/2. + field_2_top/2. + field_2_bot/2.));
+        trans_mat(1,1) = exp(-1.*beta*(2.*Jmat(adjJ(s1,0)) - field_1_top/2. - field_1_bot/2. - field_2_top/2. - field_2_bot/2.));
+        trans_prod_con *= trans_mat;
     }
-    else{
-        dn_row = spins.middleRows((regionA-1)*L,L);
-    }
-    up_row = spins.middleRows((regionA+1)*L,L);
+    obs_ratio->pe(trans_prod_con.trace() / (trans_prod_top.trace() * trans_prod_bot.trace()));
 }
 
 void Sim::saveJ(){

@@ -30,6 +30,7 @@ int main(int argc, char** argv){
                 simVec[z].clusterUpdate();
                 simVec[z].updateBinder();
                 simVec[z].updateE();
+                simVec[z].updateRatio();
             }
             // Parallel tempering step
             for(int z=0;z<num_temps;z++){
