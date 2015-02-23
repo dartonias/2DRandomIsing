@@ -69,6 +69,7 @@ class Sim{
     public:
         Sim(double _beta=0.1); //Default constructor
         Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _beta); //Parallel temperting constructor
+        Sim& operator=(const Sim& rh);
         Eigen::Matrix<int, Eigen::Dynamic, 2> getSpins();
         void setSpins(Eigen::Matrix<int, Eigen::Dynamic, 2> _spins);
         int sweeps; // Number of MC sweeps per bin
@@ -92,6 +93,12 @@ class Sim{
         double getB();
         void printSpins();
 };
+
+Sim& Sim::operator=(const Sim& rh){
+    Energy = rh.Energy;
+    spins = rh.spins;
+    return *this;
+}
 
 int Sim::getNspins(){
     return Nspins;
@@ -404,6 +411,7 @@ void Sim::updateE(){
     for(int i=0;i<Nspins;i++){
         // Loop over unique bonds, 2 per spin
         for(int b=0;b<2;b++){
+            // For each bond, calculate contribution from each layer
             Energy += spins(i,0) * spins(adjS(i,b),0) * Jmat(adjJ(i,b));
             Energy += spins(i,1) * spins(adjS(i,b),1) * Jmat(adjJ(i,b));
         }

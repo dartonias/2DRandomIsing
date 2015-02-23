@@ -1,14 +1,13 @@
-bmin = 0.400
-bmax = 0.480
-N = 40
-b = [(bmax-bmin)*i/N + bmin for i in range(N+1)]
+import math
 
-b += [0.1,0.2,0.3]
+tc = math.log(1+2**0.5)/2.
+
+b = [0.1*tc*i for i in range(1,26)]
 
 b = list(set(b))
 b = sorted(b,key=lambda x:x)
 
 fout = open('temps.dat','w')
 for i in b:
-    fout.write('%0.6f\n' % i)
+    fout.write('%0.10f\n' % i)
 fout.close()
