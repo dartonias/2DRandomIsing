@@ -14,8 +14,8 @@ reverse 0
 ```
 The `Lattice_size_L` determines the size of the lattice, so it is `LxL` in the end.
 The `Disorder_prob_P` determines what fraction of the bonds are antiferromagnetic.
-The `Random_seed` seeds the Mersenne Twister random number generator.
 This setting is overridden if the file `LOADJ` is present, in which case the program loads the couplings from `Jmat.dat` in the same directory as the executable.
+The `Random_seed` seeds the Mersenne Twister random number generator.
 A *sweep* in the program corresponds to
 
 1. `Nspins` single spin updates
