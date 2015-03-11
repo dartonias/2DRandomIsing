@@ -42,7 +42,7 @@ class Sim{
         static const int binSize = 1000; // Averages per line (larger --> smaller files)
         static const int bufferSize = 10; // Lines held per write (larger --> less often writes to file)
         Eigen::Matrix<int, Eigen::Dynamic, 2> cluster; // For the cluster update
-        Eigen::Matrix<int, Eigen::Dynamic, 1> Jmat; // All elements +- 1
+        Eigen::Matrix<double, Eigen::Dynamic, 1> Jmat; // All elements +- 1
         Eigen::Matrix<int, Eigen::Dynamic, 2> spins; // All spins +- 1
         Eigen::Matrix<double, Eigen::Dynamic, 1> chiwave; // For calculating the correlation length
         Eigen::Matrix<double, Eigen::Dynamic, 1> chiwave2; // For calculating the correlation length
@@ -59,7 +59,6 @@ class Sim{
         double P; // Probability of disorder bond, 0 = pure ferromagnet
         double beta; // Inverse temperature
         int regionA; // Number of rows in regionA (for simplicity, we will only add one entire row at a time)
-        double Padd; // Probability of adding to a cluster
         double Energy; // Total energy
         observable<double>* obs_mag2; // For binder cumulant
         observable<double>* obs_mag4;
@@ -68,7 +67,7 @@ class Sim{
         int reverse; // Variable for calculating the regions in reverse size, since we lack symmetry
     public:
         Sim(double _beta=0.1); //Default constructor
-        Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _beta); //Parallel temperting constructor
+        Sim(MTRand* _rand, Eigen::Matrix<double, Eigen::Dynamic, 1> _Jmat, double _beta); //Parallel temperting constructor
         Sim& operator=(const Sim& rh);
         Eigen::Matrix<int, Eigen::Dynamic, 2> getSpins();
         void setSpins(Eigen::Matrix<int, Eigen::Dynamic, 2> _spins);
@@ -86,7 +85,7 @@ class Sim{
         void updateRatio(); // Updates ratio measurement from the current regionA choice to the next one (adding a row)
         void saveJ();
         void loadJ();
-        Eigen::Matrix<int, Eigen::Dynamic, 1> getJ();
+        Eigen::Matrix<double, Eigen::Dynamic, 1> getJ();
         MTRand* getRand();
         double getE();
         void setE(double newE);
@@ -115,7 +114,7 @@ Sim::Sim(double _beta){
     obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
     obs_F = new observable<double>("F_"+std::to_string(beta),bufferSize,binSize,0);
     obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
-    Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
+    //Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = new MTRand(seed);
     Nspins = L*L;
     Nbonds = 2*Nspins;
@@ -144,13 +143,14 @@ Sim::Sim(double _beta){
         chiwave(i) = cos(2*PI/L*(i%L));
         chiwave2(i) = sin(2*PI/L*(i%L));
     }
+    // Even though we allow real random variables, the default constructor will still do +-1 for the variables
     Jmat.resize(Nbonds);
     for(int i=0;i<Nbonds;i++){
         if(rand->randExc() < P){
-            Jmat(i) = 1; // If P is small, this usually won't happen
+            Jmat(i) = 1*0.75; // If P is small, this usually won't happen
         }
         else{
-            Jmat(i) = -1; // Usually we are ferromagnetic
+            Jmat(i) = -1*0.65; // Usually we are ferromagnetic
         }
     }
     if(DEBUG){
@@ -158,14 +158,14 @@ Sim::Sim(double _beta){
     }
 }
 
-Sim::Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _beta){
+Sim::Sim(MTRand* _rand, Eigen::Matrix<double, Eigen::Dynamic, 1> _Jmat, double _beta){
     loadParams();
     beta = _beta;
     obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
     obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
     obs_F = new observable<double>("F_"+std::to_string(beta),bufferSize,binSize,0);
     obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
-    Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
+    //Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = _rand;
     Nspins = L*L;
     Nbonds = 2*Nspins;
@@ -194,6 +194,7 @@ Sim::Sim(MTRand* _rand, Eigen::Matrix<int, Eigen::Dynamic, 1> _Jmat, double _bet
         chiwave(i) = cos(2*PI/L*(i%L));
         chiwave2(i) = sin(2*PI/L*(i%L));
     }
+    // Here we read in Jmat
     Jmat.resize(Nbonds);
     Jmat = _Jmat;
     if(DEBUG){
@@ -363,8 +364,9 @@ void Sim::addNeighbours(int z,int zz,int& s){ // Recursive part
     }
     for(int i=0;i<4;i++){
         if(cluster(adjS(z,i),zz)==1){ // Only try if it's not in the cluster
-            if((spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i)))==-1){ // If the spins match ...
-                if(rand->randExc() < Padd){ // Probability to add
+            double bondE = spins(z,zz) * spins(adjS(z,i),zz) * Jmat(adjJ(z,i));
+            if(bondE <= 0){ // If the spins match ...
+                if(rand->randExc() < (1-exp(2*bondE*beta))){ // Probability to add, bondE is negative so this prob is greater than zero
                     addNeighbours(adjS(z,i),zz,s);
                 }
             }
@@ -537,7 +539,7 @@ void Sim::loadJ(){
     jfile.close();
 }
 
-Eigen::Matrix<int, Eigen::Dynamic, 1> Sim::getJ(){
+Eigen::Matrix<double, Eigen::Dynamic, 1> Sim::getJ(){
     return Jmat;
 }
 
