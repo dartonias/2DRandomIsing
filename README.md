@@ -79,7 +79,7 @@ After crashing a cluster once with 80,000 jobs, such measures are necessary.
 * Finally, running `python plot_MI.py` will produce a crude plot.
 
 Currently the files are setup to do a quick test of L=4 with only 16 realizations of disorder.
-The system size can be changed by modifing the number in the file `SIZE` (don't change the first part in the file) and the number of disorders must be chnged in the following files (and it must be the same for all of them currently)
+The system size can be changed by modifing the number in the file `SIZE` (don't change the first part in the file) and the number of disorders must be changed in the following files (and it must be the same for all of them currently)
 
 * `analyze_MI.py`
 * `genJs.py`
