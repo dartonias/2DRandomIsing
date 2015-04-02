@@ -1,0 +1,7 @@
+Lattice_size_L    __L
+Disorder_prob_P   0.04
+Random_seed       __seed
+Sweeps_per_bin    1000
+Num_bins          10
+Strips_in_regionA __ratio
+reverse           0

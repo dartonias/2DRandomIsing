@@ -1,0 +1,4 @@
+timeout 47h ./Ising.out
+cd ../..
+tar -cf __tarname __tardir/obs* __tardir/param.dat
+rm -rf __tardir
