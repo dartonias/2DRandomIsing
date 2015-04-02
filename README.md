@@ -61,3 +61,12 @@ The final value `S_2(A \union B)` can be calculated from the simulations with `r
 
 I usually organize runs by: `REVERSE/DISORDER/REGION_A`
 but any reordering of that should work just as well.
+
+## Getting started
+
+Using the following scripts to test the code.
+Please note, the scripts are organized for use on a cluster, that means jobs are submitted through `sqsub` and we tar the final results to keep things organized (plus, some clusters have file number restrictions, and this circumvents that problem).
+It is also set up in such a way that the number of jobs submitted to the cluster simultaneously is never too many.
+After crashing a cluster once with 80,000 jobs, such measures are necessary.
+
+
