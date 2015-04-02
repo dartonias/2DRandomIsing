@@ -17,6 +17,7 @@
 #include "Eigen/Core"
 #include "stat.hpp"
 #include <assert.h>
+#include <vector>
 
 #define PI 3.1415926535897
 
@@ -110,10 +111,10 @@ int Sim::getNbonds(){
 Sim::Sim(double _beta){
     loadParams();
     beta = _beta;
-    obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_F = new observable<double>("F_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
+    obs_mag2 = new observable<double>("mag2_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_mag4 = new observable<double>("mag4_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_F = new observable<double>("F_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_ratio = new observable<double>("ratio_"+std::to_string((long double) beta),bufferSize,binSize,0);
     //Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = new MTRand(seed);
     Nspins = L*L;
@@ -161,10 +162,10 @@ Sim::Sim(double _beta){
 Sim::Sim(MTRand* _rand, Eigen::Matrix<double, Eigen::Dynamic, 1> _Jmat, double _beta){
     loadParams();
     beta = _beta;
-    obs_mag2 = new observable<double>("mag2_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_mag4 = new observable<double>("mag4_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_F = new observable<double>("F_"+std::to_string(beta),bufferSize,binSize,0);
-    obs_ratio = new observable<double>("ratio_"+std::to_string(beta),bufferSize,binSize,0);
+    obs_mag2 = new observable<double>("mag2_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_mag4 = new observable<double>("mag4_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_F = new observable<double>("F_"+std::to_string((long double) beta),bufferSize,binSize,0);
+    obs_ratio = new observable<double>("ratio_"+std::to_string((long double) beta),bufferSize,binSize,0);
     //Padd = 1. - exp(-2*beta); // Probability of adding a spin when they are satisfied for the cluster move
     rand = _rand;
     Nspins = L*L;
