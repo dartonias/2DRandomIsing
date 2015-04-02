@@ -69,4 +69,18 @@ Please note, the scripts are organized for use on a cluster, that means jobs are
 It is also set up in such a way that the number of jobs submitted to the cluster simultaneously is never too many.
 After crashing a cluster once with 80,000 jobs, such measures are necessary.
 
+* Compile the code (with make) -- you should get an executable called `Ising.out`.
+* Move into to the directory `sharcnet_test`.
+* Copy `Ising,out` into the this folder.
+* Type `python makedirs.py` -- this will create two folders based on the size inside the file `SIZE`.
+* Go into the two folders (called `L#/` and `L#r/`) and run the command `python submit_sharcnet.py` -- this will sbumit the actual jobs, and id currently hardcoded to only submit 200 at a time. Running the command again will submit the next 200 jobs, and so on and so on.
+* When the jobs are finished, run the command `. ./tar_stuff` in each of the `L` folders -- this will create `data.tar` containing all the simulation data for that set.
+* In the folder `sharcnet_test` run the command `python analyze_MI.py` -- this will create `MI_L#.dat` and `MIE_L#.dat` containing the mutual information and error. Each line is a temperature (it matches up with `temps.dat`) and each column is a different size of region A. The middle column is for the half cut.
+* Finally, running `python plot_MI.py` will produce a crude plot.
 
+Currently the files are setup to do a quick test of L=4 with only 16 realizations of disorder.
+The system size can be changed by modifing the number in the file `SIZE` (don't change the first part in the file) and the number of disorders must be chnged in the following files
+
+* `analyze_MI.py`
+* `genJs.py`
+* `submit_sharcnet.py`
