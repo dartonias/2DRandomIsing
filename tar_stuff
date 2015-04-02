@@ -1,0 +1,6 @@
+unset GLOBIGNORE
+for i in r*.tar
+do
+tar -Af data.tar $i
+rm $i
+done
